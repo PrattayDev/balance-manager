@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Sign Up - Jahan's Balance Manager</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 80vh; }
+        .box { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 350px; }
+        input, button { width: 100%; padding: 12px; margin-top: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+        button { background-color: #2ecc71; color: white; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background-color: #27ae60; }
+        .error { color: #e74c3c; margin-top: 10px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <h2>Create Account</h2>
+        {% if error %}<div class="error">{{ error }}</div>{% endif %}
+        <form action="/signup" method="POST">
+            <input type="text" name="username" placeholder="Choose Username" required>
+            <input type="password" name="password" placeholder="Choose Password" required>
+            <button type="submit">Sign Up</button>
+        </form>
+        <p style="margin-top:20px; text-align:center;">Already have an account? <a href="/login">Log In</a></p>
+    </div>
+</body>
+</html>

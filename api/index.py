@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, session, url_for
+from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg2
 import psycopg2.extras
 import matplotlib
@@ -9,22 +10,33 @@ from io import BytesIO
 import os
 
 app = Flask(__name__, template_folder='../templates')
+# A secret key encrypts the session cookie so no one can forge a login
+app.secret_key = os.environ.get('SECRET_KEY', 'default-super-secret-key-change-me')
 
 def get_db_connection():
     db_url = os.environ.get('DATABASE_URL')
     if not db_url:
         raise Exception("DATABASE_URL environment variable is missing.")
-    # FIXED: Added sslmode='require' to allow encrypted connections to Vercel Postgres
     conn = psycopg2.connect(db_url, cursor_factory=psycopg2.extras.DictCursor, sslmode='require')
     return conn
 
-# Vercel functions are serverless; we ensure the table exists safely on boot
+# Ensure tables exist safely on Vercel boot
 try:
     conn = get_db_connection()
     cur = conn.cursor()
+    # 1. Users table
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id SERIAL PRIMARY KEY,
+            username TEXT UNIQUE NOT NULL,
+            password TEXT NOT NULL
+        )
+    ''')
+    # 2. Transactions table linked to user_id
     cur.execute('''
         CREATE TABLE IF NOT EXISTS transactions (
             id SERIAL PRIMARY KEY,
+            user_id INTEGER,
             type TEXT,
             amount REAL,
             category TEXT,
@@ -37,12 +49,70 @@ try:
 except Exception as e:
     print("Database init pending or failed:", e)
 
+# --- AUTHENTICATION ROUTES ---
+
+@app.route('/signup', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        hashed_password = generate_password_hash(password)
+        
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor()
+            cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, hashed_password))
+            conn.commit()
+            cur.close()
+            conn.close()
+            return redirect('/login')
+        except Exception:
+            return render_template('signup.html', error="Username already exists!")
+            
+    return render_template('signup.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM users WHERE username = %s", (username,))
+        user = cur.fetchone()
+        cur.close()
+        conn.close()
+        
+        if user and check_password_hash(user['password'], password):
+            session['user_id'] = user['id']
+            session['username'] = user['username']
+            return redirect('/')
+        else:
+            return render_template('login.html', error="Invalid username or password.")
+            
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/login')
+
+# --- MAIN DASHBOARD ROUTE ---
+
 @app.route('/')
 def index():
+    # If the user is not logged in, redirect them to the login page
+    if 'user_id' not in session:
+        return redirect('/login')
+        
+    current_user_id = session['user_id']
+    
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM transactions ORDER BY date DESC")
+        # Only pull transactions that belong to the logged-in user
+        cur.execute("SELECT * FROM transactions WHERE user_id = %s ORDER BY date DESC", (current_user_id,))
         transactions = cur.fetchall()
         cur.close()
         conn.close()
@@ -123,21 +193,27 @@ def index():
         transactions=transactions, 
         balance=total_balance, 
         chart_url=chart_url, 
-        line_chart_url=line_chart_url
+        line_chart_url=line_chart_url,
+        username=session['username']
     )
 
 @app.route('/add', methods=['POST'])
 def add():
+    if 'user_id' not in session:
+        return redirect('/login')
+        
     t_type = request.form['type']
     amount = float(request.form['amount'])
     category = request.form['category']
     date = request.form['date']
+    current_user_id = session['user_id']
     
     conn = get_db_connection()
     cur = conn.cursor()
+    # Save the transaction directly tied to this user's ID
     cur.execute(
-        "INSERT INTO transactions (type, amount, category, date) VALUES (%s, %s, %s, %s)", 
-        (t_type, amount, category, date)
+        "INSERT INTO transactions (user_id, type, amount, category, date) VALUES (%s, %s, %s, %s, %s)", 
+        (current_user_id, t_type, amount, category, date)
     )
     conn.commit()
     cur.close()
