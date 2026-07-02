@@ -14,7 +14,8 @@ def get_db_connection():
     db_url = os.environ.get('DATABASE_URL')
     if not db_url:
         raise Exception("DATABASE_URL environment variable is missing.")
-    conn = psycopg2.connect(db_url, cursor_factory=psycopg2.extras.DictCursor)
+    # FIXED: Added sslmode='require' to allow encrypted connections to Vercel Postgres
+    conn = psycopg2.connect(db_url, cursor_factory=psycopg2.extras.DictCursor, sslmode='require')
     return conn
 
 # Vercel functions are serverless; we ensure the table exists safely on boot
