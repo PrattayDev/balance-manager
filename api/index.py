@@ -10,7 +10,6 @@ from io import BytesIO
 import os
 
 app = Flask(__name__, template_folder='../templates')
-# A secret key encrypts the session cookie so no one can forge a login
 app.secret_key = os.environ.get('SECRET_KEY', 'default-super-secret-key-change-me')
 
 def get_db_connection():
@@ -20,10 +19,11 @@ def get_db_connection():
     conn = psycopg2.connect(db_url, cursor_factory=psycopg2.extras.DictCursor, sslmode='require')
     return conn
 
-# Ensure tables exist safely on Vercel boot
+# Ensure tables and new columns exist safely on Vercel boot
 try:
     conn = get_db_connection()
     cur = conn.cursor()
+    
     # 1. Users table
     cur.execute('''
         CREATE TABLE IF NOT EXISTS users (
@@ -32,7 +32,8 @@ try:
             password TEXT NOT NULL
         )
     ''')
-    # 2. Transactions table linked to user_id
+    
+    # 2. Transactions table
     cur.execute('''
         CREATE TABLE IF NOT EXISTS transactions (
             id SERIAL PRIMARY KEY,
@@ -43,6 +44,12 @@ try:
             date TEXT
         )
     ''')
+    
+    # 3. CRITICAL FIX: Safely add the user_id column if the table existed before Option B!
+    cur.execute('''
+        ALTER TABLE transactions ADD COLUMN IF NOT EXISTS user_id INTEGER;
+    ''')
+    
     conn.commit()
     cur.close()
     conn.close()
@@ -102,7 +109,6 @@ def logout():
 
 @app.route('/')
 def index():
-    # If the user is not logged in, redirect them to the login page
     if 'user_id' not in session:
         return redirect('/login')
         
@@ -111,7 +117,6 @@ def index():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        # Only pull transactions that belong to the logged-in user
         cur.execute("SELECT * FROM transactions WHERE user_id = %s ORDER BY date DESC", (current_user_id,))
         transactions = cur.fetchall()
         cur.close()
@@ -141,7 +146,6 @@ def index():
         labels.append(cat)
         sizes.append(amt)
 
-    # 1. Generate the "Where" Pie Chart
     chart_url = None
     if len(sizes) > 0:
         plt.figure(figsize=(5, 5))
@@ -154,7 +158,6 @@ def index():
         chart_url = base64.b64encode(img.getvalue()).decode()
         plt.close()
 
-    # 2. Generate the "When" Timeline Chart
     timeline_dates = []
     timeline_balances = []
     running_balance = 0.0
@@ -210,7 +213,6 @@ def add():
     
     conn = get_db_connection()
     cur = conn.cursor()
-    # Save the transaction directly tied to this user's ID
     cur.execute(
         "INSERT INTO transactions (user_id, type, amount, category, date) VALUES (%s, %s, %s, %s, %s)", 
         (current_user_id, t_type, amount, category, date)
