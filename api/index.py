@@ -24,16 +24,15 @@ try:
     conn = get_db_connection()
     cur = conn.cursor()
     
-    # 1. Users table
     cur.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,
             username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
+            password TEXT NOT NULL,
+            currency TEXT DEFAULT 'USD'
         )
     ''')
     
-    # 2. Transactions table
     cur.execute('''
         CREATE TABLE IF NOT EXISTS transactions (
             id SERIAL PRIMARY KEY,
@@ -45,10 +44,9 @@ try:
         )
     ''')
     
-    # 3. CRITICAL FIX: Safely add the user_id column if the table existed before Option B!
-    cur.execute('''
-        ALTER TABLE transactions ADD COLUMN IF NOT EXISTS user_id INTEGER;
-    ''')
+    # Safely add columns if they don't exist for older accounts
+    cur.execute('ALTER TABLE transactions ADD COLUMN IF NOT EXISTS user_id INTEGER;')
+    cur.execute("ALTER TABLE users ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'USD';")
     
     conn.commit()
     cur.close()
@@ -56,19 +54,19 @@ try:
 except Exception as e:
     print("Database init pending or failed:", e)
 
-# --- AUTHENTICATION ROUTES ---
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        currency = request.form.get('currency', 'USD')
         hashed_password = generate_password_hash(password)
         
         try:
             conn = get_db_connection()
             cur = conn.cursor()
-            cur.execute("INSERT INTO users (username, password) VALUES (%s, %s)", (username, hashed_password))
+            cur.execute("INSERT INTO users (username, password, currency) VALUES (%s, %s, %s)", (username, hashed_password, currency))
             conn.commit()
             cur.close()
             conn.close()
@@ -94,6 +92,7 @@ def login():
         if user and check_password_hash(user['password'], password):
             session['user_id'] = user['id']
             session['username'] = user['username']
+            session['currency'] = user['currency'] if user['currency'] else 'USD'
             return redirect('/')
         else:
             return render_template('login.html', error="Invalid username or password.")
@@ -105,7 +104,22 @@ def logout():
     session.clear()
     return redirect('/login')
 
-# --- MAIN DASHBOARD ROUTE ---
+# --- NEW: Route to change currency on the fly ---
+@app.route('/settings', methods=['POST'])
+def settings():
+    if 'user_id' not in session:
+        return redirect('/login')
+        
+    new_currency = request.form.get('currency', 'USD')
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute("UPDATE users SET currency = %s WHERE id = %s", (new_currency, session['user_id']))
+    conn.commit()
+    cur.close()
+    conn.close()
+    
+    session['currency'] = new_currency
+    return redirect('/')
 
 @app.route('/')
 def index():
@@ -113,6 +127,11 @@ def index():
         return redirect('/login')
         
     current_user_id = session['user_id']
+    user_currency = session.get('currency', 'USD')
+    
+    # Map the currency code to its symbol
+    currency_symbols = {'USD': '$', 'BDT': '৳', 'INR': '₹'}
+    currency_symbol = currency_symbols.get(user_currency, '$')
     
     try:
         conn = get_db_connection()
@@ -181,7 +200,8 @@ def index():
         plt.plot(timeline_dates, timeline_balances, marker='o', color='#2ecc71', linewidth=2)
         plt.title('Balance Over Time')
         plt.xlabel('Date')
-        plt.ylabel('Balance ($)')
+        # Display the chosen currency on the chart's side label!
+        plt.ylabel(f'Balance ({user_currency})') 
         plt.xticks(rotation=45)
         plt.tight_layout()
         
@@ -197,7 +217,9 @@ def index():
         balance=total_balance, 
         chart_url=chart_url, 
         line_chart_url=line_chart_url,
-        username=session['username']
+        username=session['username'],
+        currency_symbol=currency_symbol,
+        user_currency=user_currency
     )
 
 @app.route('/add', methods=['POST'])
