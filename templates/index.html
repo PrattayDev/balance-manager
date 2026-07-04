@@ -4,57 +4,156 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ username }}'s Balance Manager</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
+        :root {
+            --paper: #eef0ea;
+            --card: #ffffff;
+            --ink: #1f2a38;
+            --ink-soft: #5b6572;
+            --hairline: #dfe2d6;
+            --emerald: #2f7a56;
+            --emerald-soft: rgba(47, 122, 86, 0.10);
+            --brick: #a6433c;
+            --brick-soft: rgba(166, 67, 60, 0.08);
+            --gold: #c69a3e;
+            --gold-soft: rgba(198, 154, 62, 0.14);
+            --radius: 10px;
+        }
         * { box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 40px 10px; background-color: #f4f4f9; color: #333; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .nav { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #ecf0f1; padding-bottom: 10px; margin-bottom: 20px; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            margin: 0;
+            padding: 36px 16px 60px;
+            background:
+                radial-gradient(circle at 100% 0%, rgba(198,154,62,0.06) 0%, transparent 45%),
+                var(--paper);
+            color: var(--ink);
+        }
+        .container { max-width: 980px; margin: auto; }
 
-        /* User controls wrapper to keep the top right items tidy */
-        .user-controls { display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        /* --- Header / wordmark --- */
+        .nav {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            padding-bottom: 18px; margin-bottom: 28px;
+            border-bottom: 2px solid var(--ink);
+        }
+        .brand { display: flex; flex-direction: column; gap: 2px; }
+        .brand .mark {
+            font-family: 'Fraunces', serif; font-style: italic; font-weight: 600;
+            font-size: 30px; letter-spacing: -0.01em; line-height: 1;
+        }
+        .brand .tagline { font-size: 12px; color: var(--ink-soft); letter-spacing: 0.06em; text-transform: uppercase; }
 
-        .logout { background-color: #e74c3c; color: white; text-decoration: none; padding: 8px 15px; border-radius: 4px; font-weight: bold; transition: background-color 0.2s ease, transform 0.15s ease; }
-        .logout:hover { background-color: #c0392b; transform: translateY(-1px); }
+        .user-controls { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+        .user-controls > span { font-size: 14px; color: var(--ink-soft); }
+        .user-controls > span strong { color: var(--ink); }
 
-        .balance-box { background: #f8f9fa; padding: 20px; border-radius: 6px; text-align: center; margin-bottom: 20px; border: 1px solid #e9ecef; animation: fadeSlideUp 0.5s ease both; }
-        .balance { font-size: 36px; font-weight: bold; color: #2ecc71; transition: color 0.3s ease; }
-        .balance.negative { color: #e74c3c; }
+        .logout {
+            background-color: transparent; color: var(--brick); text-decoration: none;
+            padding: 8px 14px; border-radius: 999px; font-weight: 600; font-size: 13px;
+            border: 1.5px solid var(--brick); transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .logout:hover { background-color: var(--brick); color: white; }
 
-        /* Main transaction form styling */
-        .transaction-form { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; animation: fadeSlideUp 0.5s ease 0.05s both; }
-        input, select, button { padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; width: 100%; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
-        input:focus, select:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
+        .currency-form { display: flex; gap: 6px; align-items: center; margin: 0; }
+        .currency-form select {
+            padding: 8px 10px; font-size: 13px; width: auto; border-radius: 999px;
+            border: 1.5px solid var(--hairline); background: var(--card); font-family: 'Inter', sans-serif;
+        }
+        .currency-form button {
+            padding: 8px 16px; font-size: 13px; background-color: var(--ink); width: auto;
+            color: white; border: none; border-radius: 999px; font-weight: 600; cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+        .currency-form button:hover { background-color: #364457; }
 
-        /* Specific styling for the currency form so it doesn't stretch */
-        .currency-form { display: flex; gap: 5px; align-items: center; margin: 0; }
-        .currency-form select { padding: 8px; font-size: 14px; width: auto; }
-        .currency-form button { padding: 8px 15px; font-size: 14px; background-color: #3498db; width: auto; color: white; border: none; font-weight: bold; cursor: pointer; }
-        .currency-form button:hover { background-color: #2980b9; }
+        /* --- Summary stat cards --- */
+        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
+        .stat-card {
+            position: relative; background: var(--card); border: 1px solid var(--hairline);
+            border-radius: var(--radius); padding: 20px 22px; overflow: hidden;
+            animation: fadeSlideUp 0.5s ease both;
+        }
+        .stat-card::after {
+            content: ''; position: absolute; top: -14px; right: -14px; width: 34px; height: 34px;
+            background: var(--seal-color, var(--gold)); transform: rotate(45deg); opacity: 0.85;
+        }
+        .stat-card .label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-soft); margin-bottom: 8px; }
+        .stat-card .value { font-family: 'Fraunces', serif; font-weight: 600; font-size: 28px; font-variant-numeric: tabular-nums; }
+        .stat-card.balance { --seal-color: var(--gold); }
+        .stat-card.income { --seal-color: var(--emerald); }
+        .stat-card.income .value { color: var(--emerald); }
+        .stat-card.expense { --seal-color: var(--brick); }
+        .stat-card.expense .value { color: var(--brick); }
+        .balance.negative .value { color: var(--brick); }
 
+        /* --- Transaction form --- */
+        .form-card {
+            background: var(--card); border: 1px solid var(--hairline); border-radius: var(--radius);
+            padding: 24px; margin-bottom: 32px; animation: fadeSlideUp 0.5s ease 0.05s both;
+        }
+        .form-card h3 {
+            margin: 0 0 16px; font-family: 'Fraunces', serif; font-weight: 600; font-size: 17px;
+        }
+        .transaction-form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        input, select, button {
+            padding: 12px 14px; font-size: 15px; border: 1.5px solid var(--hairline);
+            border-radius: 8px; box-sizing: border-box; width: 100%; font-family: 'Inter', sans-serif;
+            background: var(--card); color: var(--ink); transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        input:focus, select:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 3px rgba(31,42,56,0.08); }
         .full-width { grid-column: span 2; }
-        .btn-main { background-color: #2c3e50; color: white; border: none; cursor: pointer; font-weight: bold; width: 100%; transition: background-color 0.2s ease, transform 0.1s ease; }
-        .btn-main:hover { background-color: #1a252f; transform: translateY(-1px); }
+        .btn-main {
+            background-color: var(--ink); color: white; border: none; cursor: pointer;
+            font-weight: 600; width: 100%; transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        .btn-main:hover { background-color: #364457; transform: translateY(-1px); }
         .btn-main:active { transform: translateY(0); }
 
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 12px; border-bottom: 1px solid #ddd; text-align: left; }
-        th { background-color: #f1f1f1; }
-        tr.tx-row { opacity: 0; transform: translateY(8px); animation: fadeSlideUp 0.4s ease forwards; transition: background-color 0.15s ease; }
-        tr.tx-row:hover { background-color: #f8f9fa; }
-        td.amt-credit { color: #27ae60; font-weight: 600; }
-        td.amt-debit { color: #e74c3c; font-weight: 600; }
-
-        .charts-container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin: 40px 0; }
-        .chart-card { flex: 1; min-width: 350px; text-align: center; background: #fff; padding: 20px; border-radius: 8px; border: 1px solid #eee; position: relative; transition: box-shadow 0.25s ease, transform 0.25s ease; animation: fadeSlideUp 0.5s ease 0.1s both; }
-        .chart-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); transform: translateY(-2px); }
-        .chart-card h3 { margin-top: 0; color: #2c3e50; font-size: 16px; }
-        .chart-wrap { position: relative; height: 280px; }
-        .empty-state { color: #999; padding: 60px 0; font-style: italic; }
+        /* --- Charts --- */
+        .charts-container { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 32px; }
+        .chart-card {
+            flex: 1; min-width: 340px; background: var(--card); padding: 22px; border-radius: var(--radius);
+            border: 1px solid var(--hairline); position: relative;
+            transition: box-shadow 0.25s ease, transform 0.25s ease;
+            animation: fadeSlideUp 0.5s ease 0.1s both;
+        }
+        .chart-card:hover { box-shadow: 0 10px 28px rgba(31,42,56,0.08); transform: translateY(-2px); }
+        .chart-card h3 { margin: 0 0 14px; font-family: 'Fraunces', serif; font-weight: 600; font-size: 16px; color: var(--ink); }
+        .chart-wrap { position: relative; height: 270px; }
+        .empty-state { color: var(--ink-soft); padding: 60px 0; font-style: italic; text-align: center; font-family: 'Fraunces', serif; }
 
         .doughnut-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; }
-        .doughnut-center .amt { font-size: 20px; font-weight: bold; color: #2c3e50; }
-        .doughnut-center .lbl { font-size: 12px; color: #999; }
+        .doughnut-center .amt { font-family: 'Fraunces', serif; font-size: 19px; font-weight: 600; color: var(--ink); }
+        .doughnut-center .lbl { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* --- Transaction history --- */
+        .history-card {
+            background: var(--card); border: 1px solid var(--hairline); border-radius: var(--radius);
+            padding: 8px 24px 20px; animation: fadeSlideUp 0.5s ease 0.15s both;
+        }
+        .history-card h2 {
+            font-family: 'Fraunces', serif; font-weight: 600; font-size: 19px; padding-top: 18px;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 13px 6px; border-bottom: 1px solid var(--hairline); text-align: left; }
+        th {
+            font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft);
+            font-weight: 600; border-bottom: 2px solid var(--ink);
+        }
+        tr.tx-row { opacity: 0; transform: translateY(8px); animation: fadeSlideUp 0.4s ease forwards; transition: background-color 0.15s ease; }
+        tr.tx-row:hover { background-color: var(--paper); }
+        tr.tx-row:last-child td { border-bottom: none; }
+        td.amt-credit { color: var(--emerald); font-weight: 600; font-variant-numeric: tabular-nums; }
+        td.amt-debit { color: var(--brick); font-weight: 600; font-variant-numeric: tabular-nums; }
+        .cat-tag {
+            display: inline-block; background: var(--paper); border: 1px solid var(--hairline);
+            border-radius: 999px; padding: 3px 10px; font-size: 13px;
+        }
 
         @keyframes fadeSlideUp {
             from { opacity: 0; transform: translateY(12px); }
@@ -65,23 +164,13 @@
             *, tr.tx-row { animation: none !important; transition: none !important; opacity: 1 !important; transform: none !important; }
         }
 
-        /* --- MOBILE RESPONSIVENESS FIX --- */
-        @media (max-width: 650px) {
-            /* Stack the header elements vertically */
-            .nav { flex-direction: column; align-items: flex-start; gap: 15px; }
-            .user-controls { flex-wrap: wrap; justify-content: flex-start; }
-
-            /* Change the form from 2 columns to 1 column */
+        @media (max-width: 700px) {
+            .stats-row { grid-template-columns: 1fr; }
+            .nav { flex-direction: column; align-items: flex-start; gap: 16px; }
             .transaction-form { grid-template-columns: 1fr; }
-
-            /* Ensure the button matches the 1-column layout */
             .full-width { grid-column: span 1; }
-
-            /* Give a little more screen space by reducing margins */
-            body { margin: 10px 5px; }
-            .container { padding: 15px; }
-
-            /* Allow the table to scroll sideways if it gets too wide */
+            body { padding: 16px 10px 40px; }
+            .history-card { padding: 8px 14px 16px; }
             table { display: block; overflow-x: auto; white-space: nowrap; }
         }
     </style>
@@ -89,11 +178,12 @@
 <body>
     <div class="container">
         <div class="nav">
-            <h1>Balance Manager</h1>
+            <div class="brand">
+                <span class="mark">Balance Manager</span>
+                <span class="tagline">Personal Ledger</span>
+            </div>
             <div class="user-controls">
-                <span>Welcome, <strong>{{ username }}</strong>!</span>
-
-                <!-- Currency selector -->
+                <span>Welcome, <strong>{{ username }}</strong></span>
                 <form action="/settings" method="POST" class="currency-form">
                     <select name="currency">
                         <option value="BDT" {% if user_currency == 'BDT' %}selected{% endif %}>BDT (৳)</option>
@@ -102,28 +192,40 @@
                     </select>
                     <button type="submit">Set</button>
                 </form>
-
                 <a href="/logout" class="logout">Logout</a>
             </div>
         </div>
 
-        <div class="balance-box">
-            <h2>Remaining Balance</h2>
-            <div class="balance {% if balance < 0 %}negative{% endif %}" id="balanceDisplay" data-target="{{ balance }}" data-symbol="{{ currency_symbol | default('৳') }}">
-                {{ currency_symbol | default('৳') }}0.00
+        <div class="stats-row">
+            <div class="stat-card balance {% if balance < 0 %}negative{% endif %}">
+                <div class="label">Remaining Balance</div>
+                <div class="value" id="balanceDisplay" data-target="{{ balance }}" data-symbol="{{ currency_symbol | default('৳') }}">
+                    {{ currency_symbol | default('৳') }}0.00
+                </div>
+            </div>
+            <div class="stat-card income" style="animation-delay: 0.05s;">
+                <div class="label">Total Income</div>
+                <div class="value">{{ currency_symbol | default('৳') }}{{ "%.2f"|format(total_credit) }}</div>
+            </div>
+            <div class="stat-card expense" style="animation-delay: 0.1s;">
+                <div class="label">Total Expenses</div>
+                <div class="value">{{ currency_symbol | default('৳') }}{{ "%.2f"|format(total_debit) }}</div>
             </div>
         </div>
 
-        <form action="/add" method="POST" class="transaction-form">
-            <input type="date" name="date" required>
-            <select name="type" required>
-                <option value="Credit">Credit (Income)</option>
-                <option value="Debit">Debit (Expense)</option>
-            </select>
-            <input type="text" name="category" placeholder="Category (e.g., Robot Parts, Groceries)" required>
-            <input type="number" step="0.01" name="amount" placeholder="Amount" required>
-            <button type="submit" class="full-width btn-main">Add Transaction</button>
-        </form>
+        <div class="form-card">
+            <h3>New Entry</h3>
+            <form action="/add" method="POST" class="transaction-form">
+                <input type="date" name="date" required>
+                <select name="type" required>
+                    <option value="Credit">Credit (Income)</option>
+                    <option value="Debit">Debit (Expense)</option>
+                </select>
+                <input type="text" name="category" placeholder="Category (e.g., Robot Parts, Groceries)" required>
+                <input type="number" step="0.01" name="amount" placeholder="Amount" required>
+                <button type="submit" class="full-width btn-main">Add Transaction</button>
+            </form>
+        </div>
 
         <div class="charts-container">
             <div class="chart-card">
@@ -150,25 +252,27 @@
             </div>
         </div>
 
-        <h2>Transaction History</h2>
-        <table>
-            <tr>
-                <th>Date</th>
-                <th>Type</th>
-                <th>Category</th>
-                <th>Amount</th>
-            </tr>
-            {% for t in transactions %}
-            <tr class="tx-row" style="animation-delay: {{ loop.index0 * 0.04 }}s;">
-                <td>{{ t.date }}</td>
-                <td>{{ t.type }}</td>
-                <td>{{ t.category }}</td>
-                <td class="{% if t.type == 'Credit' %}amt-credit{% else %}amt-debit{% endif %}">
-                    {% if t.type == 'Credit' %}+{% else %}-{% endif %}{{ currency_symbol | default('৳') }}{{ "%.2f"|format(t.amount) }}
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
+        <div class="history-card">
+            <h2>Transaction History</h2>
+            <table>
+                <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Category</th>
+                    <th>Amount</th>
+                </tr>
+                {% for t in transactions %}
+                <tr class="tx-row" style="animation-delay: {{ loop.index0 * 0.04 }}s;">
+                    <td>{{ t.date }}</td>
+                    <td>{{ t.type }}</td>
+                    <td><span class="cat-tag">{{ t.category }}</span></td>
+                    <td class="{% if t.type == 'Credit' %}amt-credit{% else %}amt-debit{% endif %}">
+                        {% if t.type == 'Credit' %}+{% else %}-{% endif %}{{ currency_symbol | default('৳') }}{{ "%.2f"|format(t.amount) }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
     </div>
 
     <script>
@@ -193,104 +297,109 @@
             requestAnimationFrame(tick);
         })();
 
-        Chart.defaults.font.family = "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif";
+        if (typeof Chart === 'undefined') {
+            console.error('Chart.js failed to load from CDN.');
+        } else {
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            Chart.defaults.color = '#5b6572';
 
-        // --- Expense breakdown doughnut chart ---
-        {% if pie_labels and pie_labels|length > 0 %}
-        (function() {
-            const ctx = document.getElementById('expenseChart').getContext('2d');
-            const labels = {{ pie_labels | tojson }};
-            const data = {{ pie_sizes | tojson }};
-            const palette = ['#3498db', '#e74c3c', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c', '#e67e22', '#34495e'];
-            const total = data.reduce((a, b) => a + b, 0);
-            const symbol = {{ (currency_symbol | default('৳')) | tojson }};
+            // --- Expense breakdown doughnut chart ---
+            {% if pie_labels and pie_labels|length > 0 %}
+            (function() {
+                const ctx = document.getElementById('expenseChart').getContext('2d');
+                const labels = {{ pie_labels | tojson }};
+                const data = {{ pie_sizes | tojson }};
+                const palette = ['#a6433c', '#c69a3e', '#2f7a56', '#4a7fa6', '#7a5ea6', '#a66f3e', '#5b6572', '#3e8a9e'];
+                const total = data.reduce((a, b) => a + b, 0);
+                const symbol = {{ (currency_symbol | default('৳')) | tojson }};
 
-            document.getElementById('doughnutCenter').innerHTML =
-                '<div class="amt">' + symbol + total.toFixed(2) + '</div><div class="lbl">total spent</div>';
+                document.getElementById('doughnutCenter').innerHTML =
+                    '<div class="amt">' + symbol + total.toFixed(2) + '</div><div class="lbl">total spent</div>';
 
-            new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: data,
-                        backgroundColor: labels.map((_, i) => palette[i % palette.length]),
-                        borderWidth: 2,
-                        borderColor: '#fff',
-                        hoverOffset: 12
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    cutout: '68%',
-                    animation: { animateRotate: true, animateScale: true, duration: 900, easing: 'easeOutQuart' },
-                    plugins: {
-                        legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12 } },
-                        tooltip: {
-                            callbacks: {
-                                label: function(ctx) {
-                                    const pct = ((ctx.parsed / total) * 100).toFixed(1);
-                                    return ctx.label + ': ' + symbol + ctx.parsed.toFixed(2) + ' (' + pct + '%)';
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            data: data,
+                            backgroundColor: labels.map((_, i) => palette[i % palette.length]),
+                            borderWidth: 2,
+                            borderColor: '#fff',
+                            hoverOffset: 12
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '68%',
+                        animation: { animateRotate: true, animateScale: true, duration: 900, easing: 'easeOutQuart' },
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 12 } } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(ctx) {
+                                        const pct = ((ctx.parsed / total) * 100).toFixed(1);
+                                        return ctx.label + ': ' + symbol + ctx.parsed.toFixed(2) + ' (' + pct + '%)';
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            });
-        })();
-        {% endif %}
+                });
+            })();
+            {% endif %}
 
-        // --- Balance over time line chart ---
-        {% if timeline_dates and timeline_dates|length > 0 %}
-        (function() {
-            const ctx = document.getElementById('balanceChart').getContext('2d');
-            const dates = {{ timeline_dates | tojson }};
-            const balances = {{ timeline_balances | tojson }};
-            const symbol = {{ (currency_symbol | default('৳')) | tojson }};
+            // --- Balance over time line chart ---
+            {% if timeline_dates and timeline_dates|length > 0 %}
+            (function() {
+                const ctx = document.getElementById('balanceChart').getContext('2d');
+                const dates = {{ timeline_dates | tojson }};
+                const balances = {{ timeline_balances | tojson }};
+                const symbol = {{ (currency_symbol | default('৳')) | tojson }};
 
-            const gradient = ctx.createLinearGradient(0, 0, 0, 280);
-            gradient.addColorStop(0, 'rgba(46, 204, 113, 0.35)');
-            gradient.addColorStop(1, 'rgba(46, 204, 113, 0.02)');
+                const gradient = ctx.createLinearGradient(0, 0, 0, 270);
+                gradient.addColorStop(0, 'rgba(47, 122, 86, 0.30)');
+                gradient.addColorStop(1, 'rgba(47, 122, 86, 0.02)');
 
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: dates,
-                    datasets: [{
-                        label: 'Balance',
-                        data: balances,
-                        borderColor: '#2ecc71',
-                        backgroundColor: gradient,
-                        fill: true,
-                        tension: 0.35,
-                        pointRadius: 3,
-                        pointHoverRadius: 6,
-                        pointBackgroundColor: '#2ecc71',
-                        borderWidth: 2.5
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: { duration: 1000, easing: 'easeOutQuart' },
-                    interaction: { mode: 'index', intersect: false },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function(ctx) { return 'Balance: ' + symbol + ctx.parsed.y.toFixed(2); }
-                            }
-                        }
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: dates,
+                        datasets: [{
+                            label: 'Balance',
+                            data: balances,
+                            borderColor: '#2f7a56',
+                            backgroundColor: gradient,
+                            fill: true,
+                            tension: 0.35,
+                            pointRadius: 3,
+                            pointHoverRadius: 6,
+                            pointBackgroundColor: '#2f7a56',
+                            borderWidth: 2.5
+                        }]
                     },
-                    scales: {
-                        x: { ticks: { maxRotation: 45, minRotation: 0 } },
-                        y: { ticks: { callback: function(v) { return symbol + v; } } }
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: { duration: 1000, easing: 'easeOutQuart' },
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(ctx) { return 'Balance: ' + symbol + ctx.parsed.y.toFixed(2); }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 0, font: { size: 11 } } },
+                            y: { grid: { color: '#eef0ea' }, ticks: { callback: function(v) { return symbol + v; }, font: { size: 11 } } }
+                        }
                     }
-                }
-            });
-        })();
-        {% endif %}
+                });
+            })();
+            {% endif %}
+        }
     </script>
 </body>
 </html>

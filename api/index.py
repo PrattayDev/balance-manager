@@ -140,14 +140,18 @@ def index():
         print(e)
     
     total_balance = 0.0
+    total_credit = 0.0
+    total_debit = 0.0
     expenses_by_category = {}
     
     for t in transactions:
         amount = t['amount']
         if t['type'] == 'Credit':
             total_balance = total_balance + amount
+            total_credit = total_credit + amount
         elif t['type'] == 'Debit':
             total_balance = total_balance - amount
+            total_debit = total_debit + amount
             
             category = t['category']
             if category not in expenses_by_category:
@@ -181,6 +185,8 @@ def index():
         'index.html',
         transactions=transactions,
         balance=total_balance,
+        total_credit=total_credit,
+        total_debit=total_debit,
         pie_labels=labels,
         pie_sizes=sizes,
         timeline_dates=timeline_dates,

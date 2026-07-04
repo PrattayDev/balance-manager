@@ -2,35 +2,71 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sign Up - Personal Balance Manager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Balance Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; align-items: center; height: 80vh; }
-        .box { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); width: 350px; }
-        input, select, button { width: 100%; padding: 12px; margin-top: 15px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { background-color: #2ecc71; color: white; border: none; cursor: pointer; font-weight: bold; }
-        button:hover { background-color: #27ae60; }
-        .error { color: #e74c3c; margin-top: 10px; font-weight: bold; }
+        :root {
+            --paper: #eef0ea; --card: #ffffff; --ink: #1f2a38; --ink-soft: #5b6572;
+            --hairline: #dfe2d6; --brick: #a6433c; --emerald: #2f7a56; --gold: #c69a3e;
+        }
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif; margin: 0; min-height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            background: radial-gradient(circle at 100% 0%, rgba(198,154,62,0.08) 0%, transparent 45%), var(--paper);
+            color: var(--ink); padding: 20px;
+        }
+        .box {
+            background: var(--card); padding: 40px 34px; border-radius: 12px;
+            border: 1px solid var(--hairline); width: 100%; max-width: 380px;
+            box-shadow: 0 20px 50px rgba(31,42,56,0.08);
+            animation: fadeSlideUp 0.5s ease both;
+        }
+        .brand { text-align: center; margin-bottom: 26px; }
+        .brand .mark { font-family: 'Fraunces', serif; font-style: italic; font-weight: 600; font-size: 26px; }
+        .brand .tagline { display: block; font-size: 11px; color: var(--ink-soft); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 2px; }
+        h2 { margin: 0 0 18px; font-family: 'Fraunces', serif; font-weight: 600; font-size: 20px; text-align: center; }
+        input, select, button {
+            width: 100%; padding: 13px 14px; margin-top: 13px; border: 1.5px solid var(--hairline);
+            border-radius: 8px; box-sizing: border-box; font-size: 15px; font-family: 'Inter', sans-serif;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease; background: var(--card); color: var(--ink);
+        }
+        input:focus, select:focus { outline: none; border-color: var(--ink); box-shadow: 0 0 0 3px rgba(31,42,56,0.08); }
+        button {
+            background-color: var(--emerald); color: white; border: none; cursor: pointer; font-weight: 600;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+        button:hover { background-color: #256045; transform: translateY(-1px); }
+        .error { color: var(--brick); margin-top: 12px; font-weight: 600; font-size: 14px; text-align: center; }
+        p.switch { margin-top: 22px; text-align: center; font-size: 14px; color: var(--ink-soft); }
+        p.switch a { color: var(--ink); font-weight: 600; text-decoration: none; border-bottom: 1.5px solid var(--gold); }
+        @keyframes fadeSlideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+        @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
     </style>
 </head>
 <body>
     <div class="box">
+        <div class="brand">
+            <span class="mark">Balance Manager</span>
+            <span class="tagline">Personal Ledger</span>
+        </div>
         <h2>Create Account</h2>
         {% if error %}<div class="error">{{ error }}</div>{% endif %}
         <form action="/signup" method="POST">
             <input type="text" name="username" placeholder="Choose Username" required>
             <input type="password" name="password" placeholder="Choose Password" required>
-            
-            <!-- Let new users pick their local currency -->
             <select name="currency" required>
                 <option value="" disabled selected>Select Default Currency</option>
                 <option value="BDT">BDT (৳)</option>
                 <option value="USD">USD ($)</option>
                 <option value="INR">INR (₹)</option>
             </select>
-            
             <button type="submit">Sign Up</button>
         </form>
-        <p style="margin-top:20px; text-align:center;">Already have an account? <a href="/login">Log In</a></p>
+        <p class="switch">Already have an account? <a href="/login">Log In</a></p>
     </div>
 </body>
 </html>
