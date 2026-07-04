@@ -2,11 +2,6 @@ from flask import Flask, render_template, request, redirect, session, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg2
 import psycopg2.extras
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import base64
-from io import BytesIO
 import os
 
 app = Flask(__name__, template_folder='../templates')
@@ -163,60 +158,33 @@ def index():
     sizes = []
     for cat, amt in expenses_by_category.items():
         labels.append(cat)
-        sizes.append(amt)
-
-    chart_url = None
-    if len(sizes) > 0:
-        plt.figure(figsize=(5, 5))
-        plt.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140)
-        plt.title('Expense Breakdown')
-        
-        img = BytesIO()
-        plt.savefig(img, format='png', transparent=True)
-        img.seek(0)
-        chart_url = base64.b64encode(img.getvalue()).decode()
-        plt.close()
+        sizes.append(round(amt, 2))
 
     timeline_dates = []
     timeline_balances = []
     running_balance = 0.0
-    
+
     reversed_transactions = []
     for t in transactions:
         reversed_transactions.insert(0, t)
-        
+
     for t in reversed_transactions:
         if t['type'] == 'Credit':
             running_balance = running_balance + t['amount']
         elif t['type'] == 'Debit':
             running_balance = running_balance - t['amount']
-            
-        timeline_dates.append(t['date'])
-        timeline_balances.append(running_balance)
 
-    line_chart_url = None
-    if len(timeline_dates) > 0:
-        plt.figure(figsize=(7, 4))
-        plt.plot(timeline_dates, timeline_balances, marker='o', color='#2ecc71', linewidth=2)
-        plt.title('Balance Over Time')
-        plt.xlabel('Date')
-        # Display the chosen currency on the chart's side label!
-        plt.ylabel(f'Balance ({user_currency})') 
-        plt.xticks(rotation=45)
-        plt.tight_layout()
-        
-        img2 = BytesIO()
-        plt.savefig(img2, format='png', transparent=True)
-        img2.seek(0)
-        line_chart_url = base64.b64encode(img2.getvalue()).decode()
-        plt.close()
+        timeline_dates.append(t['date'])
+        timeline_balances.append(round(running_balance, 2))
 
     return render_template(
-        'index.html', 
-        transactions=transactions, 
-        balance=total_balance, 
-        chart_url=chart_url, 
-        line_chart_url=line_chart_url,
+        'index.html',
+        transactions=transactions,
+        balance=total_balance,
+        pie_labels=labels,
+        pie_sizes=sizes,
+        timeline_dates=timeline_dates,
+        timeline_balances=timeline_balances,
         username=session['username'],
         currency_symbol=currency_symbol,
         user_currency=user_currency
