@@ -60,9 +60,52 @@
             <input type="password" name="password" placeholder="Choose Password" required>
             <select name="currency" required>
                 <option value="" disabled selected>Select Default Currency</option>
-                <option value="BDT">BDT (৳)</option>
-                <option value="USD">USD ($)</option>
-                <option value="INR">INR (₹)</option>
+                <optgroup label="Popular">
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="GBP">GBP (£)</option>
+                    <option value="INR">INR (₹)</option>
+                    <option value="BDT">BDT (৳)</option>
+                </optgroup>
+                <optgroup label="Asia">
+                    <option value="JPY">JPY (¥)</option>
+                    <option value="CNY">CNY (¥)</option>
+                    <option value="PKR">PKR (₨)</option>
+                    <option value="LKR">LKR (Rs)</option>
+                    <option value="NPR">NPR (₨)</option>
+                    <option value="SGD">SGD (S$)</option>
+                    <option value="MYR">MYR (RM)</option>
+                    <option value="THB">THB (฿)</option>
+                    <option value="IDR">IDR (Rp)</option>
+                    <option value="PHP">PHP (₱)</option>
+                    <option value="VND">VND (₫)</option>
+                    <option value="KRW">KRW (₩)</option>
+                    <option value="HKD">HKD (HK$)</option>
+                    <option value="TWD">TWD (NT$)</option>
+                </optgroup>
+                <optgroup label="Middle East">
+                    <option value="AED">AED (د.إ)</option>
+                    <option value="SAR">SAR (﷼)</option>
+                    <option value="QAR">QAR (ر.ق)</option>
+                    <option value="KWD">KWD (د.ك)</option>
+                </optgroup>
+                <optgroup label="Americas">
+                    <option value="CAD">CAD (C$)</option>
+                    <option value="BRL">BRL (R$)</option>
+                    <option value="MXN">MXN (Mex$)</option>
+                    <option value="ARS">ARS (AR$)</option>
+                </optgroup>
+                <optgroup label="Europe & Other">
+                    <option value="CHF">CHF</option>
+                    <option value="RUB">RUB (₽)</option>
+                    <option value="TRY">TRY (₺)</option>
+                    <option value="AUD">AUD (A$)</option>
+                    <option value="NZD">NZD (NZ$)</option>
+                    <option value="ZAR">ZAR (R)</option>
+                    <option value="NGN">NGN (₦)</option>
+                    <option value="KES">KES (KSh)</option>
+                    <option value="EGP">EGP (E£)</option>
+                </optgroup>
             </select>
             <button type="submit">Sign Up</button>
         </form>

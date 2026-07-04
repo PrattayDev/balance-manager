@@ -7,6 +7,18 @@ import os
 app = Flask(__name__, template_folder='../templates')
 app.secret_key = os.environ.get('SECRET_KEY', 'default-super-secret-key-change-me')
 
+# Shared currency -> symbol map used across routes
+CURRENCY_SYMBOLS = {
+    'USD': '$', 'EUR': '€', 'GBP': '£', 'JPY': '¥', 'CNY': '¥',
+    'INR': '₹', 'BDT': '৳', 'PKR': '₨', 'LKR': 'Rs', 'NPR': '₨',
+    'AED': 'د.إ', 'SAR': '﷼', 'QAR': 'ر.ق', 'KWD': 'د.ك',
+    'SGD': 'S$', 'MYR': 'RM', 'THB': '฿', 'IDR': 'Rp', 'PHP': '₱',
+    'VND': '₫', 'KRW': '₩', 'HKD': 'HK$', 'TWD': 'NT$',
+    'AUD': 'A$', 'NZD': 'NZ$', 'CAD': 'C$', 'CHF': 'CHF',
+    'BRL': 'R$', 'MXN': 'Mex$', 'ARS': 'AR$', 'ZAR': 'R',
+    'NGN': '₦', 'KES': 'KSh', 'EGP': 'E£', 'TRY': '₺', 'RUB': '₽',
+}
+
 def get_db_connection():
     db_url = os.environ.get('DATABASE_URL')
     if not db_url:
@@ -125,8 +137,7 @@ def index():
     user_currency = session.get('currency', 'USD')
     
     # Map the currency code to its symbol
-    currency_symbols = {'USD': '$', 'BDT': '৳', 'INR': '₹'}
-    currency_symbol = currency_symbols.get(user_currency, '$')
+    currency_symbol = CURRENCY_SYMBOLS.get(user_currency, '$')
     
     try:
         conn = get_db_connection()

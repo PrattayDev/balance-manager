@@ -186,9 +186,52 @@
                 <span>Welcome, <strong>{{ username }}</strong></span>
                 <form action="/settings" method="POST" class="currency-form">
                     <select name="currency">
-                        <option value="BDT" {% if user_currency == 'BDT' %}selected{% endif %}>BDT (৳)</option>
-                        <option value="USD" {% if user_currency == 'USD' %}selected{% endif %}>USD ($)</option>
-                        <option value="INR" {% if user_currency == 'INR' %}selected{% endif %}>INR (₹)</option>
+                        <optgroup label="Popular">
+                            <option value="USD" {% if user_currency == 'USD' %}selected{% endif %}>USD ($)</option>
+                            <option value="EUR" {% if user_currency == 'EUR' %}selected{% endif %}>EUR (€)</option>
+                            <option value="GBP" {% if user_currency == 'GBP' %}selected{% endif %}>GBP (£)</option>
+                            <option value="INR" {% if user_currency == 'INR' %}selected{% endif %}>INR (₹)</option>
+                            <option value="BDT" {% if user_currency == 'BDT' %}selected{% endif %}>BDT (৳)</option>
+                        </optgroup>
+                        <optgroup label="Asia">
+                            <option value="JPY" {% if user_currency == 'JPY' %}selected{% endif %}>JPY (¥)</option>
+                            <option value="CNY" {% if user_currency == 'CNY' %}selected{% endif %}>CNY (¥)</option>
+                            <option value="PKR" {% if user_currency == 'PKR' %}selected{% endif %}>PKR (₨)</option>
+                            <option value="LKR" {% if user_currency == 'LKR' %}selected{% endif %}>LKR (Rs)</option>
+                            <option value="NPR" {% if user_currency == 'NPR' %}selected{% endif %}>NPR (₨)</option>
+                            <option value="SGD" {% if user_currency == 'SGD' %}selected{% endif %}>SGD (S$)</option>
+                            <option value="MYR" {% if user_currency == 'MYR' %}selected{% endif %}>MYR (RM)</option>
+                            <option value="THB" {% if user_currency == 'THB' %}selected{% endif %}>THB (฿)</option>
+                            <option value="IDR" {% if user_currency == 'IDR' %}selected{% endif %}>IDR (Rp)</option>
+                            <option value="PHP" {% if user_currency == 'PHP' %}selected{% endif %}>PHP (₱)</option>
+                            <option value="VND" {% if user_currency == 'VND' %}selected{% endif %}>VND (₫)</option>
+                            <option value="KRW" {% if user_currency == 'KRW' %}selected{% endif %}>KRW (₩)</option>
+                            <option value="HKD" {% if user_currency == 'HKD' %}selected{% endif %}>HKD (HK$)</option>
+                            <option value="TWD" {% if user_currency == 'TWD' %}selected{% endif %}>TWD (NT$)</option>
+                        </optgroup>
+                        <optgroup label="Middle East">
+                            <option value="AED" {% if user_currency == 'AED' %}selected{% endif %}>AED (د.إ)</option>
+                            <option value="SAR" {% if user_currency == 'SAR' %}selected{% endif %}>SAR (﷼)</option>
+                            <option value="QAR" {% if user_currency == 'QAR' %}selected{% endif %}>QAR (ر.ق)</option>
+                            <option value="KWD" {% if user_currency == 'KWD' %}selected{% endif %}>KWD (د.ك)</option>
+                        </optgroup>
+                        <optgroup label="Americas">
+                            <option value="CAD" {% if user_currency == 'CAD' %}selected{% endif %}>CAD (C$)</option>
+                            <option value="BRL" {% if user_currency == 'BRL' %}selected{% endif %}>BRL (R$)</option>
+                            <option value="MXN" {% if user_currency == 'MXN' %}selected{% endif %}>MXN (Mex$)</option>
+                            <option value="ARS" {% if user_currency == 'ARS' %}selected{% endif %}>ARS (AR$)</option>
+                        </optgroup>
+                        <optgroup label="Europe & Other">
+                            <option value="CHF" {% if user_currency == 'CHF' %}selected{% endif %}>CHF</option>
+                            <option value="RUB" {% if user_currency == 'RUB' %}selected{% endif %}>RUB (₽)</option>
+                            <option value="TRY" {% if user_currency == 'TRY' %}selected{% endif %}>TRY (₺)</option>
+                            <option value="AUD" {% if user_currency == 'AUD' %}selected{% endif %}>AUD (A$)</option>
+                            <option value="NZD" {% if user_currency == 'NZD' %}selected{% endif %}>NZD (NZ$)</option>
+                            <option value="ZAR" {% if user_currency == 'ZAR' %}selected{% endif %}>ZAR (R)</option>
+                            <option value="NGN" {% if user_currency == 'NGN' %}selected{% endif %}>NGN (₦)</option>
+                            <option value="KES" {% if user_currency == 'KES' %}selected{% endif %}>KES (KSh)</option>
+                            <option value="EGP" {% if user_currency == 'EGP' %}selected{% endif %}>EGP (E£)</option>
+                        </optgroup>
                     </select>
                     <button type="submit">Set</button>
                 </form>
