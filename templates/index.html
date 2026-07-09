@@ -141,6 +141,23 @@
         .chart-card:hover { box-shadow: 0 10px 28px rgba(31,42,56,0.08); transform: translateY(-2px); }
         .trend-card { width: 100%; margin-bottom: 32px; }
         .trend-wrap { height: 300px; }
+
+        .insights-card { padding: 24px; }
+        .insights-hint { color: var(--ink-soft); font-size: 13px; margin: 0 0 16px; }
+        .insights-btn { width: auto; padding: 11px 22px; font-size: 14px; }
+        .insights-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .insights-result {
+            margin-top: 18px; padding: 16px 18px; background: var(--paper);
+            border: 1px solid var(--hairline); border-radius: 8px;
+            font-size: 14px; line-height: 1.6; color: var(--ink); white-space: pre-line;
+            animation: fadeSlideUp 0.4s ease both;
+        }
+        .insights-loading { display: flex; align-items: center; gap: 10px; color: var(--ink-soft); font-size: 14px; }
+        .spinner {
+            width: 16px; height: 16px; border: 2px solid var(--hairline); border-top-color: var(--gold);
+            border-radius: 50%; animation: spin 0.7s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .chart-card h3 { margin: 0 0 14px; font-family: 'Fraunces', serif; font-weight: 600; font-size: 16px; color: var(--ink); }
         .period-tag {
             font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600; color: var(--ink-soft);
@@ -336,6 +353,13 @@
                 <div class="empty-state">Add transactions across a few months to see your trend</div>
                 {% endif %}
             </div>
+        </div>
+
+        <div class="chart-card trend-card insights-card">
+            <h3>AI Insights <span class="period-tag">{{ selected_month_label }}</span></h3>
+            <p class="insights-hint">Get a quick summary of your spending and a few savings tips based on your top categories.</p>
+            <button type="button" id="insightsBtn" class="btn-main insights-btn">Generate Insights</button>
+            <div id="insightsResult" class="insights-result" style="display: none;"></div>
         </div>
 
         <div class="history-card">
@@ -559,6 +583,33 @@
             })();
             {% endif %}
         }
+
+        // --- AI Insights button ---
+        (function() {
+            const btn = document.getElementById('insightsBtn');
+            const resultBox = document.getElementById('insightsResult');
+            const selectedMonth = {{ selected_month | tojson }};
+
+            btn.addEventListener('click', async function() {
+                btn.disabled = true;
+                btn.textContent = 'Generating…';
+                resultBox.style.display = 'block';
+                resultBox.innerHTML = '<div class="insights-loading"><span class="spinner"></span> Analyzing your transactions…</div>';
+
+                try {
+                    const res = await fetch('/insights?month=' + encodeURIComponent(selectedMonth), {
+                        method: 'POST'
+                    });
+                    const data = await res.json();
+                    resultBox.textContent = data.reply || "Something went wrong. Please try again.";
+                } catch (err) {
+                    resultBox.textContent = "Couldn't reach the server. Please check your connection and try again.";
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = 'Generate Insights';
+                }
+            });
+        })();
     </script>
 </body>
 </html>

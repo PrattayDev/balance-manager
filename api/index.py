@@ -1,8 +1,9 @@
-from flask import Flask, render_template, request, redirect, session, url_for
+from flask import Flask, render_template, request, redirect, session, url_for, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg2
 import psycopg2.extras
 from datetime import datetime
+import requests
 import os
 
 app = Flask(__name__, template_folder='../templates')
@@ -277,6 +278,94 @@ def index():
         trend_income=trend_income,
         trend_expenses=trend_expenses
     )
+
+@app.route('/insights', methods=['POST'])
+def insights():
+    if 'user_id' not in session:
+        return jsonify({'error': 'Not logged in'}), 401
+
+    current_user_id = session['user_id']
+    user_currency = session.get('currency', 'USD')
+    currency_symbol = CURRENCY_SYMBOLS.get(user_currency, '$')
+    selected_month = request.args.get('month', 'all')
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT * FROM transactions WHERE user_id = %s ORDER BY date ASC, id ASC", (current_user_id,))
+        all_transactions = cur.fetchall()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(e)
+        return jsonify({'reply': "Couldn't load your transactions right now. Please try again shortly."})
+
+    if selected_month == 'all':
+        scoped = all_transactions
+    else:
+        scoped = [t for t in all_transactions if (t['date'] or '')[:7] == selected_month]
+
+    if len(scoped) == 0:
+        return jsonify({'reply': "There's no transaction data for this period yet, so there's nothing to summarize. Add a few transactions and check back."})
+
+    total_credit = sum(t['amount'] for t in scoped if t['type'] == 'Credit')
+    total_debit = sum(t['amount'] for t in scoped if t['type'] == 'Debit')
+
+    category_totals = {}
+    for t in scoped:
+        if t['type'] == 'Debit':
+            category_totals[t['category']] = category_totals.get(t['category'], 0) + t['amount']
+    top_categories = sorted(category_totals.items(), key=lambda x: x[1], reverse=True)[:6]
+
+    period_label = selected_month if selected_month != 'all' else 'all-time'
+    summary_lines = [
+        f"Period: {period_label}",
+        f"Total income: {currency_symbol}{total_credit:.2f}",
+        f"Total expenses: {currency_symbol}{total_debit:.2f}",
+        f"Net: {currency_symbol}{(total_credit - total_debit):.2f}",
+        "Top spending categories:"
+    ]
+    for cat, amt in top_categories:
+        summary_lines.append(f"  - {cat}: {currency_symbol}{amt:.2f}")
+    summary_text = "\n".join(summary_lines)
+
+    api_key = os.environ.get('GEMINI_API_KEY')
+    if not api_key:
+        return jsonify({'reply': "AI Insights isn't set up yet. Add a GEMINI_API_KEY environment variable in your Vercel project settings to enable this feature (free from ai.google.dev)."})
+
+    prompt = (
+        "You are a friendly, practical personal finance assistant inside a budgeting app called Balance Manager. "
+        "Given the transaction summary below, respond with two short parts:\n"
+        "1. A brief 2-3 sentence summary of the spending pattern.\n"
+        "2. Three specific, actionable savings tips based on the actual top spending categories shown. "
+        "Be concrete, not generic. Keep the whole reply under 150 words, no markdown headers, plain short paragraphs.\n\n"
+        f"Transaction summary:\n{summary_text}"
+    )
+
+    try:
+        # NOTE: Google has announced gemini-2.5-flash will be phased out around
+        # October 2026, replaced by gemini-3.5-flash. If this stops working after
+        # that date, update the model name below (check ai.google.dev/gemini-api/docs/changelog
+        # for current free-tier model availability).
+        response = requests.post(
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+            params={"key": api_key},
+            json={"contents": [{"parts": [{"text": prompt}]}]},
+            timeout=20
+        )
+        response.raise_for_status()
+        data = response.json()
+        candidates = data.get("candidates", [])
+        if not candidates:
+            return jsonify({'reply': "I couldn't generate insights for that period — try again, or pick a different month."})
+        parts = candidates[0].get("content", {}).get("parts", [])
+        reply_text = "".join(p.get("text", "") for p in parts).strip()
+        if not reply_text:
+            reply_text = "I couldn't generate insights right now — please try again in a moment."
+        return jsonify({'reply': reply_text})
+    except Exception as e:
+        print("AI insights error:", e)
+        return jsonify({'reply': "Something went wrong generating insights. Please try again shortly."})
 
 @app.route('/add', methods=['POST'])
 def add():
