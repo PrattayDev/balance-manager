@@ -71,6 +71,22 @@
         }
         .currency-form button:hover { background-color: #364457; }
 
+        /* --- Month filter bar --- */
+        .period-bar {
+            display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
+            animation: fadeSlideUp 0.5s ease both;
+        }
+        .period-bar label {
+            font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-soft);
+        }
+        .period-bar select {
+            padding: 8px 12px; font-size: 14px; border-radius: 999px; border: 1.5px solid var(--hairline);
+            background: var(--card); color: var(--ink); font-family: 'Inter', sans-serif; cursor: pointer;
+            font-weight: 600;
+        }
+        .period-bar select:focus { outline: none; border-color: var(--ink); }
+        .sublabel { font-size: 10px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-soft); }
+
         /* --- Summary stat cards --- */
         .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 32px; }
         .stat-card {
@@ -124,6 +140,12 @@
         }
         .chart-card:hover { box-shadow: 0 10px 28px rgba(31,42,56,0.08); transform: translateY(-2px); }
         .chart-card h3 { margin: 0 0 14px; font-family: 'Fraunces', serif; font-weight: 600; font-size: 16px; color: var(--ink); }
+        .period-tag {
+            font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600; color: var(--ink-soft);
+            text-transform: uppercase; letter-spacing: 0.04em; background: var(--paper);
+            border: 1px solid var(--hairline); border-radius: 999px; padding: 3px 9px; margin-left: 6px;
+            vertical-align: middle;
+        }
         .chart-wrap { position: relative; height: 270px; }
         .empty-state { color: var(--ink-soft); padding: 60px 0; font-style: italic; text-align: center; font-family: 'Fraunces', serif; }
 
@@ -236,19 +258,31 @@
             </div>
         </div>
 
+        <div class="period-bar">
+            <label for="monthSelect">Viewing</label>
+            <form action="/" method="GET" id="monthForm">
+                <select name="month" id="monthSelect" onchange="document.getElementById('monthForm').submit()">
+                    <option value="all" {% if selected_month == 'all' %}selected{% endif %}>All Time</option>
+                    {% for m in month_options %}
+                    <option value="{{ m.value }}" {% if selected_month == m.value %}selected{% endif %}>{{ m.label }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+
         <div class="stats-row">
             <div class="stat-card balance {% if balance < 0 %}negative{% endif %}">
-                <div class="label">Remaining Balance</div>
+                <div class="label">Remaining Balance {% if selected_month != 'all' %}<span class="sublabel">(all-time)</span>{% endif %}</div>
                 <div class="value" id="balanceDisplay" data-target="{{ balance }}" data-symbol="{{ currency_symbol | default('৳') }}">
                     {{ currency_symbol | default('৳') }}0.00
                 </div>
             </div>
             <div class="stat-card income" style="animation-delay: 0.05s;">
-                <div class="label">Total Income</div>
+                <div class="label">Income {% if selected_month != 'all' %}This Month{% endif %}</div>
                 <div class="value">{{ currency_symbol | default('৳') }}{{ "%.2f"|format(total_credit) }}</div>
             </div>
             <div class="stat-card expense" style="animation-delay: 0.1s;">
-                <div class="label">Total Expenses</div>
+                <div class="label">Expenses {% if selected_month != 'all' %}This Month{% endif %}</div>
                 <div class="value">{{ currency_symbol | default('৳') }}{{ "%.2f"|format(total_debit) }}</div>
             </div>
         </div>
@@ -269,23 +303,23 @@
 
         <div class="charts-container">
             <div class="chart-card">
-                <h3>Expense Breakdown</h3>
+                <h3>Expense Breakdown <span class="period-tag">{{ selected_month_label }}</span></h3>
                 <div class="chart-wrap">
                     {% if pie_labels and pie_labels|length > 0 %}
                     <canvas id="expenseChart"></canvas>
                     {% else %}
-                    <div class="empty-state">No expenses recorded yet</div>
+                    <div class="empty-state">No expenses recorded {% if selected_month != 'all' %}for {{ selected_month_label }}{% else %}yet{% endif %}</div>
                     {% endif %}
                 </div>
             </div>
 
             <div class="chart-card">
-                <h3>Balance Over Time</h3>
+                <h3>Balance Over Time <span class="period-tag">{{ selected_month_label }}</span></h3>
                 <div class="chart-wrap">
                     {% if timeline_dates and timeline_dates|length > 0 %}
                     <canvas id="balanceChart"></canvas>
                     {% else %}
-                    <div class="empty-state">No transactions yet</div>
+                    <div class="empty-state">No transactions {% if selected_month != 'all' %}for {{ selected_month_label }}{% else %}yet{% endif %}</div>
                     {% endif %}
                 </div>
             </div>

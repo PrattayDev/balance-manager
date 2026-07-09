@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, redirect, session, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg2
 import psycopg2.extras
+from datetime import datetime
 import os
 
 app = Flask(__name__, template_folder='../templates')
@@ -142,32 +143,74 @@ def index():
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT * FROM transactions WHERE user_id = %s ORDER BY date DESC", (current_user_id,))
-        transactions = cur.fetchall()
+        # Fetch oldest-first so we can build a correct running balance,
+        # then re-order for display afterwards.
+        cur.execute("SELECT * FROM transactions WHERE user_id = %s ORDER BY date ASC, id ASC", (current_user_id,))
+        all_transactions = cur.fetchall()
         cur.close()
         conn.close()
     except Exception as e:
-        transactions = []
+        all_transactions = []
         print(e)
-    
-    total_balance = 0.0
-    total_credit = 0.0
-    total_debit = 0.0
+
+    # Attach a true, all-time running balance to every transaction, in
+    # chronological order, before any month filtering happens.
+    running_balance = 0.0
+    enriched = []
+    available_months = []
+    for t in all_transactions:
+        row = dict(t)
+        if row['type'] == 'Credit':
+            running_balance += row['amount']
+        elif row['type'] == 'Debit':
+            running_balance -= row['amount']
+        row['running_balance'] = round(running_balance, 2)
+        enriched.append(row)
+        month_key = (row['date'] or '')[:7]
+        if month_key and month_key not in available_months:
+            available_months.append(month_key)
+
+    available_months.sort(reverse=True)
+
+    def month_label(key):
+        try:
+            return datetime.strptime(key + '-01', '%Y-%m-%d').strftime('%B %Y')
+        except Exception:
+            return key
+
+    month_options = [{'value': m, 'label': month_label(m)} for m in available_months]
+
+    # The true, all-time balance (unaffected by any month filter)
+    total_balance = running_balance
+
+    selected_month = request.args.get('month', 'all')
+    if selected_month != 'all' and selected_month not in available_months:
+        selected_month = 'all'
+
+    selected_month_label = 'All Time' if selected_month == 'all' else month_label(selected_month)
+
+    if selected_month == 'all':
+        filtered = enriched
+    else:
+        filtered = [t for t in enriched if (t['date'] or '')[:7] == selected_month]
+
+    # Display transactions newest-first
+    transactions = list(reversed(filtered))
+
+    period_credit = 0.0
+    period_debit = 0.0
     expenses_by_category = {}
-    
-    for t in transactions:
+
+    for t in filtered:
         amount = t['amount']
         if t['type'] == 'Credit':
-            total_balance = total_balance + amount
-            total_credit = total_credit + amount
+            period_credit += amount
         elif t['type'] == 'Debit':
-            total_balance = total_balance - amount
-            total_debit = total_debit + amount
-            
+            period_debit += amount
             category = t['category']
             if category not in expenses_by_category:
                 expenses_by_category[category] = 0.0
-            expenses_by_category[category] = expenses_by_category[category] + amount
+            expenses_by_category[category] += amount
 
     # Sort categories by spend, keep the top 6, roll the rest into "Other"
     # so the legend stays readable on small screens
@@ -189,36 +232,28 @@ def index():
             labels.append(cat)
             sizes.append(round(amt, 2))
 
-    timeline_dates = []
-    timeline_balances = []
-    running_balance = 0.0
-
-    reversed_transactions = []
-    for t in transactions:
-        reversed_transactions.insert(0, t)
-
-    for t in reversed_transactions:
-        if t['type'] == 'Credit':
-            running_balance = running_balance + t['amount']
-        elif t['type'] == 'Debit':
-            running_balance = running_balance - t['amount']
-
-        timeline_dates.append(t['date'])
-        timeline_balances.append(round(running_balance, 2))
+    # Balance-over-time chart uses the TRUE cumulative running balance,
+    # just restricted to points that fall within the selected period, so
+    # the trend line during that month is accurate rather than reset to 0.
+    timeline_dates = [t['date'] for t in filtered]
+    timeline_balances = [t['running_balance'] for t in filtered]
 
     return render_template(
         'index.html',
         transactions=transactions,
         balance=total_balance,
-        total_credit=total_credit,
-        total_debit=total_debit,
+        total_credit=period_credit,
+        total_debit=period_debit,
         pie_labels=labels,
         pie_sizes=sizes,
         timeline_dates=timeline_dates,
         timeline_balances=timeline_balances,
         username=session['username'],
         currency_symbol=currency_symbol,
-        user_currency=user_currency
+        user_currency=user_currency,
+        month_options=month_options,
+        selected_month=selected_month,
+        selected_month_label=selected_month_label
     )
 
 @app.route('/add', methods=['POST'])
