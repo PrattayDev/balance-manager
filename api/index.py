@@ -180,6 +180,25 @@ def index():
 
     month_options = [{'value': m, 'label': month_label(m)} for m in available_months]
 
+    # Monthly income-vs-expense trend, across the FULL history regardless of
+    # any month filter, so the trend chart always shows the complete picture.
+    monthly_totals = {}
+    for row in enriched:
+        month_key = (row['date'] or '')[:7]
+        if not month_key:
+            continue
+        if month_key not in monthly_totals:
+            monthly_totals[month_key] = {'credit': 0.0, 'debit': 0.0}
+        if row['type'] == 'Credit':
+            monthly_totals[month_key]['credit'] += row['amount']
+        elif row['type'] == 'Debit':
+            monthly_totals[month_key]['debit'] += row['amount']
+
+    trend_months_sorted = sorted(monthly_totals.keys())  # chronological, oldest first
+    trend_labels = [month_label(m) for m in trend_months_sorted]
+    trend_income = [round(monthly_totals[m]['credit'], 2) for m in trend_months_sorted]
+    trend_expenses = [round(monthly_totals[m]['debit'], 2) for m in trend_months_sorted]
+
     # The true, all-time balance (unaffected by any month filter)
     total_balance = running_balance
 
@@ -253,7 +272,10 @@ def index():
         user_currency=user_currency,
         month_options=month_options,
         selected_month=selected_month,
-        selected_month_label=selected_month_label
+        selected_month_label=selected_month_label,
+        trend_labels=trend_labels,
+        trend_income=trend_income,
+        trend_expenses=trend_expenses
     )
 
 @app.route('/add', methods=['POST'])

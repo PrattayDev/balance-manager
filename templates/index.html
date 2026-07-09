@@ -139,6 +139,8 @@
             animation: fadeSlideUp 0.5s ease 0.1s both;
         }
         .chart-card:hover { box-shadow: 0 10px 28px rgba(31,42,56,0.08); transform: translateY(-2px); }
+        .trend-card { width: 100%; margin-bottom: 32px; }
+        .trend-wrap { height: 300px; }
         .chart-card h3 { margin: 0 0 14px; font-family: 'Fraunces', serif; font-weight: 600; font-size: 16px; color: var(--ink); }
         .period-tag {
             font-family: 'Inter', sans-serif; font-size: 11px; font-weight: 600; color: var(--ink-soft);
@@ -325,6 +327,17 @@
             </div>
         </div>
 
+        <div class="chart-card trend-card">
+            <h3>Monthly Trend <span class="period-tag">All Months</span></h3>
+            <div class="chart-wrap trend-wrap">
+                {% if trend_labels and trend_labels|length > 0 %}
+                <canvas id="trendChart"></canvas>
+                {% else %}
+                <div class="empty-state">Add transactions across a few months to see your trend</div>
+                {% endif %}
+            </div>
+        </div>
+
         <div class="history-card">
             <h2>Transaction History</h2>
             <table>
@@ -488,6 +501,58 @@
                         scales: {
                             x: { grid: { display: false }, ticks: { maxRotation: 45, minRotation: 0, font: { size: 11 } } },
                             y: { grid: { color: '#eef0ea' }, ticks: { callback: function(v) { return symbol + v; }, font: { size: 11 } } }
+                        }
+                    }
+                });
+            })();
+            {% endif %}
+
+            // --- Monthly income vs expense trend (bar chart) ---
+            {% if trend_labels and trend_labels|length > 0 %}
+            (function() {
+                const ctx = document.getElementById('trendChart').getContext('2d');
+                const labels = {{ trend_labels | tojson }};
+                const income = {{ trend_income | tojson }};
+                const expenses = {{ trend_expenses | tojson }};
+                const symbol = {{ (currency_symbol | default('৳')) | tojson }};
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: 'Income',
+                                data: income,
+                                backgroundColor: '#2f7a56',
+                                borderRadius: 4,
+                                maxBarThickness: 34
+                            },
+                            {
+                                label: 'Expenses',
+                                data: expenses,
+                                backgroundColor: '#a6433c',
+                                borderRadius: 4,
+                                maxBarThickness: 34
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        animation: { duration: 900, easing: 'easeOutQuart' },
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { position: 'bottom', labels: { boxWidth: 12, padding: 14, font: { size: 12 } } },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(ctx) { return ctx.dataset.label + ': ' + symbol + ctx.parsed.y.toFixed(2); }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+                            y: { grid: { color: '#eef0ea' }, ticks: { callback: function(v) { return symbol + v; }, font: { size: 11 } }, beginAtZero: true }
                         }
                     }
                 });
