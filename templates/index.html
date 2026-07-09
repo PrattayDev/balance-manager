@@ -127,10 +127,6 @@
         .chart-wrap { position: relative; height: 270px; }
         .empty-state { color: var(--ink-soft); padding: 60px 0; font-style: italic; text-align: center; font-family: 'Fraunces', serif; }
 
-        .doughnut-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; }
-        .doughnut-center .amt { font-family: 'Fraunces', serif; font-size: 19px; font-weight: 600; color: var(--ink); }
-        .doughnut-center .lbl { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; }
-
         /* --- Transaction history --- */
         .history-card {
             background: var(--card); border: 1px solid var(--hairline); border-radius: var(--radius);
@@ -172,6 +168,7 @@
             body { padding: 16px 10px 40px; }
             .history-card { padding: 8px 14px 16px; }
             table { display: block; overflow-x: auto; white-space: nowrap; }
+            .chart-wrap { height: 320px; }
         }
     </style>
 </head>
@@ -276,7 +273,6 @@
                 <div class="chart-wrap">
                     {% if pie_labels and pie_labels|length > 0 %}
                     <canvas id="expenseChart"></canvas>
-                    <div class="doughnut-center" id="doughnutCenter"></div>
                     {% else %}
                     <div class="empty-state">No expenses recorded yet</div>
                     {% endif %}
@@ -356,8 +352,28 @@
                 const total = data.reduce((a, b) => a + b, 0);
                 const symbol = {{ (currency_symbol | default('৳')) | tojson }};
 
-                document.getElementById('doughnutCenter').innerHTML =
-                    '<div class="amt">' + symbol + total.toFixed(2) + '</div><div class="lbl">total spent</div>';
+                // Draws the total directly on the canvas, centered on the actual
+                // doughnut hole (chart.getDatasetMeta area) so it stays correctly
+                // positioned no matter how tall the legend grows on small screens.
+                const centerTextPlugin = {
+                    id: 'centerText',
+                    afterDraw(chart) {
+                        const { ctx, chartArea } = chart;
+                        if (!chartArea) return;
+                        const cx = (chartArea.left + chartArea.right) / 2;
+                        const cy = (chartArea.top + chartArea.bottom) / 2;
+                        ctx.save();
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.font = "600 19px 'Fraunces', serif";
+                        ctx.fillStyle = '#1f2a38';
+                        ctx.fillText(symbol + total.toFixed(2), cx, cy - 9);
+                        ctx.font = "11px 'Inter', sans-serif";
+                        ctx.fillStyle = '#5b6572';
+                        ctx.fillText('TOTAL SPENT', cx, cy + 12);
+                        ctx.restore();
+                    }
+                };
 
                 new Chart(ctx, {
                     type: 'doughnut',
@@ -377,7 +393,7 @@
                         cutout: '68%',
                         animation: { animateRotate: true, animateScale: true, duration: 900, easing: 'easeOutQuart' },
                         plugins: {
-                            legend: { position: 'bottom', labels: { boxWidth: 12, padding: 12, font: { size: 12 } } },
+                            legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } },
                             tooltip: {
                                 callbacks: {
                                     label: function(ctx) {
@@ -387,7 +403,8 @@
                                 }
                             }
                         }
-                    }
+                    },
+                    plugins: [centerTextPlugin]
                 });
             })();
             {% endif %}

@@ -169,11 +169,25 @@ def index():
                 expenses_by_category[category] = 0.0
             expenses_by_category[category] = expenses_by_category[category] + amount
 
+    # Sort categories by spend, keep the top 6, roll the rest into "Other"
+    # so the legend stays readable on small screens
+    sorted_categories = sorted(expenses_by_category.items(), key=lambda x: x[1], reverse=True)
+    MAX_SLICES = 6
     labels = []
     sizes = []
-    for cat, amt in expenses_by_category.items():
-        labels.append(cat)
-        sizes.append(round(amt, 2))
+    if len(sorted_categories) > MAX_SLICES:
+        top = sorted_categories[:MAX_SLICES - 1]
+        rest = sorted_categories[MAX_SLICES - 1:]
+        for cat, amt in top:
+            labels.append(cat)
+            sizes.append(round(amt, 2))
+        other_total = sum(amt for _, amt in rest)
+        labels.append('Other')
+        sizes.append(round(other_total, 2))
+    else:
+        for cat, amt in sorted_categories:
+            labels.append(cat)
+            sizes.append(round(amt, 2))
 
     timeline_dates = []
     timeline_balances = []
