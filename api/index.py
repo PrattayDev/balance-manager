@@ -389,3 +389,31 @@ def add():
     conn.close()
     
     return redirect('/')
+
+@app.route('/delete/<int:transaction_id>', methods=['POST'])
+def delete(transaction_id):
+    if 'user_id' not in session:
+        return redirect('/login')
+
+    current_user_id = session['user_id']
+
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        # The user_id check matters: it ensures a user can only ever delete
+        # their own rows, even if someone crafts a request with another id.
+        cur.execute(
+            "DELETE FROM transactions WHERE id = %s AND user_id = %s",
+            (transaction_id, current_user_id)
+        )
+        conn.commit()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print("Delete failed:", e)
+
+    # Send the user back to the month they were viewing
+    month = request.form.get('month', 'all')
+    if month and month != 'all':
+        return redirect('/?month=' + month)
+    return redirect('/')

@@ -187,6 +187,20 @@
         tr.tx-row:last-child td { border-bottom: none; }
         td.amt-credit { color: var(--emerald); font-weight: 600; font-variant-numeric: tabular-nums; }
         td.amt-debit { color: var(--brick); font-weight: 600; font-variant-numeric: tabular-nums; }
+        .action-cell { width: 1%; text-align: right; padding-right: 0; }
+        .delete-form { margin: 0; display: inline; }
+        .delete-btn {
+            width: 26px; height: 26px; padding: 0; line-height: 1;
+            background: transparent; color: var(--ink-soft); border: 1px solid transparent;
+            border-radius: 50%; font-size: 18px; cursor: pointer; opacity: 0.35;
+            transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+        }
+        tr.tx-row:hover .delete-btn { opacity: 1; }
+        .delete-btn:hover { background: var(--brick); color: #fff; border-color: var(--brick); opacity: 1; }
+        .delete-btn:focus-visible { outline: none; opacity: 1; border-color: var(--brick); }
+        /* Touch devices have no hover, so keep the control always visible */
+        @media (hover: none) { .delete-btn { opacity: 0.75; } }
+
         .cat-tag {
             display: inline-block; background: var(--paper); border: 1px solid var(--hairline);
             border-radius: 999px; padding: 3px 10px; font-size: 13px;
@@ -370,6 +384,7 @@
                     <th>Type</th>
                     <th>Category</th>
                     <th>Amount</th>
+                    <th></th>
                 </tr>
                 {% for t in transactions %}
                 <tr class="tx-row" style="animation-delay: {{ loop.index0 * 0.04 }}s;">
@@ -378,6 +393,14 @@
                     <td><span class="cat-tag">{{ t.category }}</span></td>
                     <td class="{% if t.type == 'Credit' %}amt-credit{% else %}amt-debit{% endif %}">
                         {% if t.type == 'Credit' %}+{% else %}-{% endif %}{{ currency_symbol | default('৳') }}{{ "%.2f"|format(t.amount) }}
+                    </td>
+                    <td class="action-cell">
+                        <form action="/delete/{{ t.id }}" method="POST" class="delete-form"
+                              data-category="{{ t.category }}"
+                              data-amount="{{ currency_symbol | default('৳') }}{{ '%.2f'|format(t.amount) }}">
+                            <input type="hidden" name="month" value="{{ selected_month }}">
+                            <button type="submit" class="delete-btn" title="Delete this transaction" aria-label="Delete transaction">&times;</button>
+                        </form>
                     </td>
                 </tr>
                 {% endfor %}
@@ -583,6 +606,20 @@
             })();
             {% endif %}
         }
+
+        // --- Confirm before deleting a transaction ---
+        (function() {
+            document.querySelectorAll('.delete-form').forEach(function(form) {
+                form.addEventListener('submit', function(e) {
+                    const category = form.dataset.category || 'this transaction';
+                    const amount = form.dataset.amount || '';
+                    const message = 'Delete "' + category + '" (' + amount + ')?\n\nThis cannot be undone.';
+                    if (!window.confirm(message)) {
+                        e.preventDefault();
+                    }
+                });
+            });
+        })();
 
         // --- AI Insights button ---
         (function() {
