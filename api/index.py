@@ -417,3 +417,129 @@ def delete(transaction_id):
     if month and month != 'all':
         return redirect('/?month=' + month)
     return redirect('/')
+
+# ============================================================================
+# SMS -> auto transaction webhook  (paste this block into api/index.py)
+#
+# Place it ABOVE the `if __name__ == '__main__':` line, alongside your other
+# @app.route definitions. It needs the Flask `app`, `get_db_connection`, `re`,
+# `os`, `datetime`, and `jsonify` that your file already imports/defines.
+#
+# HOW IT WORKS
+#   Your phone forwards each bank SMS to  /sms-webhook?token=YOUR_SECRET
+#   This route parses it and inserts a transaction for the right user — no
+#   manual typing. Unparseable messages are ignored (200 OK) so the forwarder
+#   app doesn't keep retrying.
+#
+# SETUP (two environment variables on Vercel)
+#   SMS_WEBHOOK_TOKEN  = a long random string you invent (the shared password)
+#   SMS_WEBHOOK_USER_ID = the id of the user row these transactions belong to
+#                         (look it up once in your DB: SELECT id, username FROM users;)
+# ============================================================================
+
+import re
+from datetime import datetime
+
+_CREDIT_WORDS = ['credited', 'credit', 'received', 'deposit', 'refund']
+_DEBIT_WORDS  = ['purchase', 'debited', 'debit', 'withdrawn', 'payment', 'spent']
+
+
+def parse_bank_sms(text):
+    """Return {'type','amount','date','category'} or None if it isn't a txn SMS."""
+    if not text:
+        return None
+    t = text.strip()
+    low = t.lower()
+
+    # --- amount: first "BDT <number>" is the transaction amount ---
+    m = re.search(r'BDT\s*([\d,]+(?:\.\d+)?)', t, re.IGNORECASE)
+    if not m:
+        return None
+    amount = float(m.group(1).replace(',', ''))
+
+    # --- type: debit words take priority if both appear ---
+    ttype = None
+    if any(w in low for w in _CREDIT_WORDS):
+        ttype = 'Credit'
+    if any(w in low for w in _DEBIT_WORDS):
+        ttype = 'Debit'
+    if ttype is None:
+        return None
+
+    # --- date: dd-Mon-yy / dd-Mon-yyyy (falls back to today) ---
+    date_iso = datetime.now().strftime('%Y-%m-%d')
+    dm = re.search(r'(\d{1,2}-[A-Za-z]{3}-\d{2,4})', t)
+    if dm:
+        for fmt in ('%d-%b-%y', '%d-%b-%Y'):
+            try:
+                date_iso = datetime.strptime(dm.group(1), fmt).strftime('%Y-%m-%d')
+                break
+            except ValueError:
+                continue
+
+    # --- category / merchant ---
+    category = 'Other'
+    fm = re.search(r'from\s+([A-Z0-9 .&*/-]+?)\.?(?:Card|\s+on\b)', t, re.IGNORECASE)
+    if fm:
+        category = fm.group(1).strip().title()
+    elif 'interest' in low:
+        category = 'Interest'
+    elif ttype == 'Credit':
+        category = 'Income'
+
+    return {'type': ttype, 'amount': amount, 'date': date_iso, 'category': category}
+
+
+@app.route('/sms-webhook', methods=['POST'])
+def sms_webhook():
+    # 1) shared-secret check — stops strangers posting fake transactions
+    expected = os.environ.get('SMS_WEBHOOK_TOKEN')
+    supplied = request.args.get('token') or request.headers.get('X-Token')
+    if not expected or supplied != expected:
+        return jsonify({'error': 'unauthorized'}), 401
+
+    user_id = os.environ.get('SMS_WEBHOOK_USER_ID')
+    if not user_id:
+        return jsonify({'error': 'SMS_WEBHOOK_USER_ID not set'}), 500
+
+    # 2) get the SMS text — accept form field, JSON, or raw body
+    body = ''
+    if request.form.get('message'):
+        body = request.form.get('message')
+    elif request.is_json:
+        data = request.get_json(silent=True) or {}
+        body = data.get('message', '') or data.get('text', '')
+    if not body:
+        body = request.get_data(as_text=True) or ''
+
+    parsed = parse_bank_sms(body)
+    if not parsed:
+        # Not a transaction SMS (OTP, promo, etc.) — acknowledge so the phone
+        # app stops retrying, but insert nothing.
+        return jsonify({'status': 'ignored'}), 200
+
+    # 3) duplicate guard — the same SMS forwarded twice shouldn't double-count
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute(
+            """SELECT id FROM transactions
+               WHERE user_id = %s AND type = %s AND amount = %s AND date = %s
+               AND category = %s LIMIT 1""",
+            (user_id, parsed['type'], parsed['amount'], parsed['date'], parsed['category'])
+        )
+        if cur.fetchone():
+            cur.close(); conn.close()
+            return jsonify({'status': 'duplicate'}), 200
+
+        cur.execute(
+            "INSERT INTO transactions (user_id, type, amount, category, date) VALUES (%s, %s, %s, %s, %s)",
+            (user_id, parsed['type'], parsed['amount'], parsed['category'], parsed['date'])
+        )
+        conn.commit()
+        cur.close(); conn.close()
+    except Exception as e:
+        print("sms-webhook DB error:", e)
+        return jsonify({'error': 'db'}), 500
+
+    return jsonify({'status': 'added', 'transaction': parsed}), 200
