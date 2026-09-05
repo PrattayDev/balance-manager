@@ -513,6 +513,7 @@ def sms_webhook():
         body = request.get_data(as_text=True) or ''
 
     parsed = parse_bank_sms(body)
+    print(f"SMS-WEBHOOK body={body!r} parsed={parsed}")
     if not parsed:
         # Not a transaction SMS (OTP, promo, etc.) — acknowledge so the phone
         # app stops retrying, but insert nothing.
