@@ -513,11 +513,16 @@ def sms_webhook():
         body = request.get_data(as_text=True) or ''
 
     parsed = parse_bank_sms(body)
+
+    # Diagnostic: log exactly what the phone forwarded, so we can see in Vercel
+    # Logs whether the real SMS text is arriving (or a literal placeholder).
     print(f"SMS-WEBHOOK body={body!r} parsed={parsed}")
+
     if not parsed:
         # Not a transaction SMS (OTP, promo, etc.) — acknowledge so the phone
-        # app stops retrying, but insert nothing.
-        return jsonify({'status': 'ignored'}), 200
+        # app stops retrying, but insert nothing. We echo back the body we saw
+        # so it's visible in the forwarder's own history too.
+        return jsonify({'status': 'ignored', 'received_body': body[:200]}), 200
 
     # 3) duplicate guard — the same SMS forwarded twice shouldn't double-count
     try:
